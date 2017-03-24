@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "required": ["event"],
+  "properties": {
+    "event": {
+      "enum": [
+        "operator:createPlays",
+        "operator:clearPredictions"
+      ]
+    },
+    "data": {}
+  }
+}
