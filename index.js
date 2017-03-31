@@ -35,7 +35,7 @@ const messageHandlers = {
   'operator:createPlays': (message, server) => {
     broadcast(server, createMessage('server:playsCreated', message.data));
   },
-  'operator:clearPredictions': () => {
+  'operator:clearPredictions': (message, server) => {
     broadcast(server, createMessage('server:clearPredictions'));
   }
 };
