@@ -2,6 +2,8 @@ const http = require('http');
 const Promise = require('bluebird');
 const mysql = require('promise-mysql');
 const moment = require('moment');
+const request = require('request-promise');
+const config = require('config');
 const express = require('express');
 const WebSocket = require('ws');
 const Ajv = require('ajv');
@@ -33,6 +35,21 @@ const broadcast = function (server, message) {
 // Individual message handlers.
 const messageHandlers = {
   'operator:createPlays': (message, server) => {
+    const request = require('request-promise');
+    request({
+      method: 'POST',
+      uri: 'https://gcm-http.googleapis.com/gcm/send',
+      body: {
+        to: '/topics/playsCreated',
+        data: {
+          message: JSON.stringify(message.data)
+        }
+      },
+      headers: {
+        Authorization: `key=${config.get('gcm.key')}`
+      },
+      json: true
+    });
     broadcast(server, createMessage('server:playsCreated', message.data));
   },
   'operator:clearPredictions': (message, server) => {
