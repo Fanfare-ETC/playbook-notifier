@@ -15,6 +15,12 @@ const webSocketServer = new WebSocket.Server({ server });
 const ajv = new Ajv();
 const validate = ajv.compile(require('./schema.json'));
 
+// Game state.
+const state = {
+  inning: null,
+  half: null
+};
+
 // Helper functions.
 const createMessage = function (event, data) {
   if (data !== undefined) {
@@ -34,6 +40,13 @@ const broadcast = function (server, message) {
 
 // Individual message handlers.
 const messageHandlers = {
+  'client:getState': function () {
+    this.send(createMessage('server:state', state));
+  },
+  'operator:setState': (message, server) => {
+    Object.assign(state, message.data);
+    broadcast(server, createMessage('server:stateChanged', message.data));
+  },
   'operator:createPlays': (message, server) => {
     const request = require('request-promise');
     request({
