@@ -4,6 +4,7 @@
   "properties": {
     "event": {
       "enum": [
+        "client:makePredictions",
         "client:getState",
         "operator:setState",
         "operator:createPlays",

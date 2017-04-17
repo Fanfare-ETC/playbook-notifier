@@ -1,2 +1,5 @@
 gcm:
   key: GCM_KEY
+redis:
+  host: REDIS_HOST
+  port: REDIS_PORT

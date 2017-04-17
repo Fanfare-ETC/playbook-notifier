@@ -1,2 +1,5 @@
 gcm:
   key:
+redis:
+  host: localhost
+  port: 6379

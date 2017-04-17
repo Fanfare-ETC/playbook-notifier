@@ -1,6 +1,7 @@
+'use strict';
 const http = require('http');
 const Promise = require('bluebird');
-const mysql = require('promise-mysql');
+const redis = require('redis');
 const moment = require('moment');
 const request = require('request-promise');
 const config = require('config');
@@ -8,8 +9,12 @@ const express = require('express');
 const WebSocket = require('ws');
 const Ajv = require('ajv');
 
+Promise.promisifyAll(redis.RedisClient.prototype);
+Promise.promisifyAll(redis.Multi.prototype);
+
 const app = express();
 const server = http.createServer(app);
+const redisClient = redis.createClient(config.get('redis.port'), config.get('redis.host'));
 const webSocketServer = new WebSocket.Server({ server });
 
 const ajv = new Ajv();
@@ -22,7 +27,7 @@ const state = {
 };
 
 // Helper functions.
-const createMessage = function (event, data) {
+function createMessage(event, data) {
   if (data !== undefined) {
     return JSON.stringify({ event, data });
   } else {
@@ -30,7 +35,7 @@ const createMessage = function (event, data) {
   }
 };
 
-const broadcast = function (server, message) {
+function broadcast(server, message) {
   server.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -38,16 +43,32 @@ const broadcast = function (server, message) {
   });
 };
 
-// Individual message handlers.
+/**
+ * Individual message handlers.
+ * @type {Object.<string, Function>}
+ */
 const messageHandlers = {
-  'client:getState': function () {
-    this.send(createMessage('server:state', state));
+  'client:makePredictions': function (client, message, server) {
+    const validate = ajv.compile(require('./schemas/client-make-predictions.json'));
+    if (!validate(message.data)) {
+      return client.send(createMessage('server:error', validate.errors));
+    }
+
+    message.data.plays.forEach(play => {
+      redisClient.sadd(`predictions:${play}`, message.data.id);
+    });
   },
-  'operator:setState': (message, server) => {
+
+  'client:getState': function (client) {
+    client.send(createMessage('server:state', state));
+  },
+
+  'operator:setState': (client, message, server) => {
     Object.assign(state, message.data);
     broadcast(server, createMessage('server:stateChanged', message.data));
   },
-  'operator:createPlays': (message, server) => {
+
+  'operator:createPlays': (client, message, server) => {
     const request = require('request-promise');
     request({
       method: 'POST',
@@ -65,23 +86,28 @@ const messageHandlers = {
     });
     broadcast(server, createMessage('server:playsCreated', message.data));
   },
-  'operator:clearPredictions': (message, server) => {
+
+  'operator:clearPredictions': (client, message, server) => {
     broadcast(server, createMessage('server:clearPredictions'));
   }
 };
 
-// Core message handler.
-const handleMessage = function (client, message, server) {
+/**
+ * Core message handler.
+ * @param {WebSocket} client 
+ * @param {*} message 
+ * @param {WebSocket.Server} server 
+ */
+function handleMessage(client, message, server) {
   try {
     message = JSON.parse(message);
     if (!validate(message)) {
-      console.log('Failed to validate?');
       client.send(createMessage('server:error', validate.errors));
       return;
     }
 
     console.log(`${client.upgradeReq.connection.remoteAddress} ${message.event}`);
-    messageHandlers[message.event].call(client, message, server);
+    messageHandlers[message.event].call(this, client, message, server);
 
   } catch (e) {
     client.send(createMessage('server:error', 'Invalid JSON was received by the server.'));
