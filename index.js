@@ -76,7 +76,10 @@ const messageHandlers = {
       body: {
         to: '/topics/playsCreated',
         data: {
-          message: JSON.stringify(message.data)
+          message: JSON.stringify({
+            event: 'server:playsCreated',
+            data: message.data
+          })
         }
       },
       headers: {
