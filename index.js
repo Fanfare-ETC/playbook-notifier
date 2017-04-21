@@ -91,6 +91,11 @@ const messageHandlers = {
     forwardMessageToGcm('playsCreated', 'server:playsCreated', message);
     broadcast(server, createMessage('server:playsCreated', message.data));
   },
+  'operator:lockPredictions': (client, message, server) => {
+    message.data = { lockTime: new Date().toISOString() };
+    forwardMessageToGcm('lockPredictions', 'server:lockPredictions', message);
+    broadcast(server, createMessage('server:lockPredictions', message.data));
+  },
   'operator:clearPredictions': (client, message, server) => {
     forwardMessageToGcm('clearPredictions', 'server:clearPredictions', message);
     broadcast(server, createMessage('server:clearPredictions'));
