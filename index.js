@@ -41,6 +41,7 @@ function createMessage(event, data) {
  * @param {*} message
  */
 function broadcast(server, message) {
+  console.log(`* < ${message}`);
   server.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -93,8 +94,12 @@ const messageHandlers = {
   },
   'operator:lockPredictions': (client, message, server) => {
     message.data = { lockTime: new Date().toISOString() };
-    forwardMessageToGcm('lockPredictions', 'server:lockPredictions', message);
-    broadcast(server, createMessage('server:lockPredictions', message.data));
+    forwardMessageToGcm('notifyLockPredictions', 'server:notifyLockPredictions', message);
+    broadcast(server, createMessage('server:notifyLockPredictions', message.data));
+    setTimeout(() => {
+      forwardMessageToGcm('lockPredictions', 'server:lockPredictions', message);
+      broadcast(server, createMessage('server:lockPredictions', message.data));
+    }, 10000);
   },
   'operator:clearPredictions': (client, message, server) => {
     forwardMessageToGcm('clearPredictions', 'server:clearPredictions', message);
@@ -109,6 +114,7 @@ const messageHandlers = {
  * @param {WebSocket.Server} server
  */
 function handleMessage(client, message, server) {
+  console.log(`${client.upgradeReq.connection.remoteAddress} > ${message}`);
   try {
     message = JSON.parse(message);
     if (!validate(message)) {
@@ -117,7 +123,6 @@ function handleMessage(client, message, server) {
       return;
     }
 
-    console.log(`${client.upgradeReq.connection.remoteAddress} ${message.event}`);
     messageHandlers[message.event].call(this, client, message, server);
 
   } catch (e) {
